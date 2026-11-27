@@ -1,9 +1,7 @@
 package br.edu.senai.gerenciadoros.service;
 
 import br.edu.senai.gerenciadoros.dto.OrdemServicoRequest;
-import br.edu.senai.gerenciadoros.exception.ClienteNaoEncontradoException;
-import br.edu.senai.gerenciadoros.exception.OrdemNaoEncontradaException;
-import br.edu.senai.gerenciadoros.exception.TecnicoNaoEncontradoException;
+import br.edu.senai.gerenciadoros.exception.NaoEncontradoException;
 import br.edu.senai.gerenciadoros.model.Cliente;
 import br.edu.senai.gerenciadoros.model.OrdemServico;
 import br.edu.senai.gerenciadoros.model.StatusOrdem;
@@ -13,7 +11,6 @@ import br.edu.senai.gerenciadoros.repository.OrdemServicoRepository;
 import br.edu.senai.gerenciadoros.repository.TecnicoRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -28,18 +25,20 @@ public class OrdemServicoService {
     private final TecnicoRepository tecnicoRepository;
 
     public List<OrdemServico> listar(StatusOrdem status) {
-        return status == null ? repository.findAll() : repository.findByStatus(status);
+        if (status == null) {
+            return repository.findAll();
+        }
+        return repository.findByStatus(status);
     }
 
     public OrdemServico buscarPorId(Long id) {
         return repository.findById(id)
-                .orElseThrow(() -> new OrdemNaoEncontradaException(id));
+                .orElseThrow(() -> new NaoEncontradoException("Ordem de serviço não encontrada"));
     }
 
-    @Transactional
     public OrdemServico abrir(OrdemServicoRequest r) {
         Cliente cliente = clienteRepository.findById(r.clienteId())
-                .orElseThrow(() -> new ClienteNaoEncontradoException(r.clienteId()));
+                .orElseThrow(() -> new NaoEncontradoException("Cliente não encontrado"));
 
         OrdemServico os = new OrdemServico();
         os.setEquipamento(r.equipamento());
@@ -50,41 +49,30 @@ public class OrdemServicoService {
         return repository.save(os);
     }
 
-    @Transactional
     public OrdemServico atribuirTecnico(Long id, Long tecnicoId) {
         OrdemServico os = buscarPorId(id);
-        validarNaoFinalizada(os);
         Tecnico tecnico = tecnicoRepository.findById(tecnicoId)
-                .orElseThrow(() -> new TecnicoNaoEncontradoException(tecnicoId));
+                .orElseThrow(() -> new NaoEncontradoException("Técnico não encontrado"));
         os.setTecnico(tecnico);
         return repository.save(os);
     }
 
-    @Transactional
     public OrdemServico iniciar(Long id) {
         OrdemServico os = buscarPorId(id);
-        if (os.getStatus() != StatusOrdem.ABERTA) {
-            throw new IllegalStateException("Só é possível iniciar uma OS com status ABERTA");
-        }
         if (os.getTecnico() == null) {
-            throw new IllegalStateException("Atribua um técnico antes de iniciar a OS");
+            throw new IllegalArgumentException("Atribua um técnico antes de iniciar a OS");
         }
         os.setStatus(StatusOrdem.EM_ANDAMENTO);
         return repository.save(os);
     }
 
-    public void validarValor(BigDecimal valor) {
-        if (valor == null || valor.signum() <= 0) {
-            throw new IllegalArgumentException("O valor do serviço deve ser maior que zero");
-        }
-    }
-
-    @Transactional
     public OrdemServico concluir(Long id, BigDecimal valor) {
-        validarValor(valor);
+        if (valor == null || valor.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalArgumentException("O valor deve ser maior que zero");
+        }
         OrdemServico os = buscarPorId(id);
         if (os.getStatus() != StatusOrdem.EM_ANDAMENTO) {
-            throw new IllegalStateException("Só é possível concluir uma OS em andamento");
+            throw new IllegalArgumentException("A OS precisa estar em andamento para ser concluída");
         }
         os.setValor(valor);
         os.setStatus(StatusOrdem.CONCLUIDA);
@@ -92,17 +80,12 @@ public class OrdemServicoService {
         return repository.save(os);
     }
 
-    @Transactional
     public OrdemServico cancelar(Long id) {
         OrdemServico os = buscarPorId(id);
-        validarNaoFinalizada(os);
+        if (os.getStatus() == StatusOrdem.CONCLUIDA) {
+            throw new IllegalArgumentException("Não é possível cancelar uma OS concluída");
+        }
         os.setStatus(StatusOrdem.CANCELADA);
         return repository.save(os);
-    }
-
-    private void validarNaoFinalizada(OrdemServico os) {
-        if (os.getStatus() == StatusOrdem.CONCLUIDA || os.getStatus() == StatusOrdem.CANCELADA) {
-            throw new IllegalStateException("OS finalizada não pode ser alterada");
-        }
     }
 }
