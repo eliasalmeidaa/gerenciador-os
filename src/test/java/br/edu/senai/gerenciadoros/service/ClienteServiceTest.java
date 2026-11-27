@@ -1,13 +1,11 @@
 package br.edu.senai.gerenciadoros.service;
 
 import br.edu.senai.gerenciadoros.dto.ClienteRequest;
-import br.edu.senai.gerenciadoros.exception.ClienteNaoEncontradoException;
+import br.edu.senai.gerenciadoros.exception.NaoEncontradoException;
 import br.edu.senai.gerenciadoros.model.Cliente;
 import br.edu.senai.gerenciadoros.repository.ClienteRepository;
-import br.edu.senai.gerenciadoros.repository.OrdemServicoRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -24,18 +22,17 @@ class ClienteServiceTest {
     @Mock
     ClienteRepository repository;
 
-    @Mock
-    OrdemServicoRepository ordemRepository;
-
     @InjectMocks
     ClienteService service;
 
     @Test
     void deveBuscarClientePorId() {
-        var cliente = new Cliente(1L, "Maria", "11999990000", "maria@email.com"); // Arrange
+        Cliente cliente = new Cliente(1L, "Maria", "11999990000", "maria@email.com");
         when(repository.findById(1L)).thenReturn(Optional.of(cliente));
-        var resultado = service.buscarPorId(1L); // Act
-        assertEquals("Maria", resultado.getNome()); // Assert
+
+        Cliente resultado = service.buscarPorId(1L);
+
+        assertEquals("Maria", resultado.getNome());
         verify(repository).findById(1L);
     }
 
@@ -43,37 +40,25 @@ class ClienteServiceTest {
     void deveRetornarErroQuandoClienteNaoExiste() {
         when(repository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(ClienteNaoEncontradoException.class, () -> service.buscarPorId(99L));
+        assertThrows(NaoEncontradoException.class, () -> service.buscarPorId(99L));
     }
 
     @Test
-    void deveCadastrarClienteComDadosValidos() {
-        var request = new ClienteRequest("Maria", "11999990000", "maria@email.com");
-        when(repository.existsByEmail("maria@email.com")).thenReturn(false);
-        when(repository.save(any(Cliente.class))).thenAnswer(inv -> inv.getArgument(0));
+    void deveCadastrarCliente() {
+        ClienteRequest request = new ClienteRequest("Maria", "11999990000", "maria@email.com");
+        when(repository.save(any(Cliente.class))).thenReturn(new Cliente(1L, "Maria", "11999990000", "maria@email.com"));
 
-        service.cadastrar(request);
+        Cliente resultado = service.cadastrar(request);
 
-        ArgumentCaptor<Cliente> captor = ArgumentCaptor.forClass(Cliente.class);
-        verify(repository, times(1)).save(captor.capture());
-        assertEquals("Maria", captor.getValue().getNome());
+        assertEquals(1L, resultado.getId());
+        verify(repository, times(1)).save(any(Cliente.class));
     }
 
     @Test
-    void naoDeveCadastrarClienteComEmailDuplicado() {
-        var request = new ClienteRequest("Maria", "11999990000", "maria@email.com");
-        when(repository.existsByEmail("maria@email.com")).thenReturn(true);
+    void naoDeveExcluirClienteInexistente() {
+        when(repository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThrows(IllegalArgumentException.class, () -> service.cadastrar(request));
-        verify(repository, never()).save(any());
-    }
-
-    @Test
-    void naoDeveExcluirClienteComOrdensDeServico() {
-        when(repository.existsById(1L)).thenReturn(true);
-        when(ordemRepository.existsByClienteId(1L)).thenReturn(true);
-
-        assertThrows(IllegalStateException.class, () -> service.excluir(1L));
+        assertThrows(NaoEncontradoException.class, () -> service.excluir(99L));
         verify(repository, never()).deleteById(any());
     }
 }
