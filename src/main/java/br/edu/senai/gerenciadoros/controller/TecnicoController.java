@@ -1,7 +1,6 @@
 package br.edu.senai.gerenciadoros.controller;
 
 import br.edu.senai.gerenciadoros.dto.TecnicoRequest;
-import br.edu.senai.gerenciadoros.dto.TecnicoResponse;
 import br.edu.senai.gerenciadoros.model.Tecnico;
 import br.edu.senai.gerenciadoros.service.TecnicoService;
 import jakarta.validation.Valid;
@@ -20,25 +19,25 @@ public class TecnicoController {
     private final TecnicoService service;
 
     @GetMapping
-    public List<TecnicoResponse> listar() {
+    public List<Tecnico> listar() {
         return service.listar();
     }
 
     @GetMapping("/{id}")
-    public TecnicoResponse buscar(@PathVariable Long id) {
-        return TecnicoResponse.de(service.buscarPorId(id));
+    public Tecnico buscar(@PathVariable Long id) {
+        return service.buscarPorId(id);
     }
 
     @PostMapping
-    public ResponseEntity<TecnicoResponse> criar(@Valid @RequestBody TecnicoRequest r) {
+    public ResponseEntity<Tecnico> criar(@Valid @RequestBody TecnicoRequest r) {
         Tecnico t = service.cadastrar(r);
         URI uri = URI.create("/api/tecnicos/" + t.getId());
-        return ResponseEntity.created(uri).body(TecnicoResponse.de(t));
+        return ResponseEntity.created(uri).body(t);
     }
 
     @PutMapping("/{id}")
-    public TecnicoResponse atualizar(@PathVariable Long id, @Valid @RequestBody TecnicoRequest r) {
-        return TecnicoResponse.de(service.atualizar(id, r));
+    public Tecnico atualizar(@PathVariable Long id, @Valid @RequestBody TecnicoRequest r) {
+        return service.atualizar(id, r);
     }
 
     @DeleteMapping("/{id}")
