@@ -9,8 +9,4 @@ import java.util.List;
 public interface OrdemServicoRepository extends JpaRepository<OrdemServico, Long> {
 
     List<OrdemServico> findByStatus(StatusOrdem status);
-
-    boolean existsByClienteId(Long clienteId);
-
-    boolean existsByTecnicoId(Long tecnicoId);
 }
