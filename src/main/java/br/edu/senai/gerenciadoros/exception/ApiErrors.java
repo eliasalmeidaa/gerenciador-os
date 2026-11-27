@@ -7,41 +7,24 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.LinkedHashMap;
-import java.util.Map;
-
 @RestControllerAdvice
 public class ApiErrors {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ProblemDetail> validacao(MethodArgumentNotValidException ex) {
-        ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Entrada inválida");
-        Map<String, String> campos = new LinkedHashMap<>();
-        ex.getBindingResult().getFieldErrors()
-                .forEach(erro -> campos.put(erro.getField(), erro.getDefaultMessage()));
-        problema.setProperty("campos", campos);
-        return ResponseEntity.badRequest().body(problema);
+        ProblemDetail erro = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Entrada inválida");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erro);
     }
 
-    @ExceptionHandler({
-            ClienteNaoEncontradoException.class,
-            TecnicoNaoEncontradoException.class,
-            OrdemNaoEncontradaException.class
-    })
-    public ResponseEntity<ProblemDetail> naoEncontrado(RuntimeException ex) {
-        ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
-        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(problema);
+    @ExceptionHandler(NaoEncontradoException.class)
+    public ResponseEntity<ProblemDetail> naoEncontrado(NaoEncontradoException ex) {
+        ProblemDetail erro = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(erro);
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<ProblemDetail> regraInvalida(IllegalArgumentException ex) {
-        ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
-        return ResponseEntity.badRequest().body(problema);
-    }
-
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<ProblemDetail> conflito(IllegalStateException ex) {
-        ProblemDetail problema = ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, ex.getMessage());
-        return ResponseEntity.status(HttpStatus.CONFLICT).body(problema);
+    public ResponseEntity<ProblemDetail> regraDeNegocio(IllegalArgumentException ex) {
+        ProblemDetail erro = ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(erro);
     }
 }
